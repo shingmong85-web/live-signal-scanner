@@ -7,8 +7,7 @@
 <title>SMC ICT Single Scanner</title>
 
 <link rel="manifest" href="manifest.json">
-
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#080d18">
 
 <style>
 * {
@@ -18,7 +17,7 @@
 body {
   margin: 0;
   background: #080d18;
-  color: white;
+  color: #fff;
   font-family: Arial, sans-serif;
 }
 
@@ -36,46 +35,45 @@ body {
 }
 
 .title {
-  font-size: 23px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .badge {
   background: #17233d;
   color: #9db6ff;
-  padding: 6px 10px;
+  padding: 7px 11px;
   border-radius: 20px;
   font-size: 11px;
+  font-weight: bold;
 }
 
 .card {
-  background: #121a2d;
-  border: 1px solid #273653;
-  border-radius: 18px;
-  padding: 18px;
+  background: #111a2d;
+  border: 1px solid #263653;
+  border-radius: 20px;
+  padding: 20px;
   margin-bottom: 14px;
 }
 
-.label {
-  color: #aebbd2;
+.single-title {
+  color: #9eacc4;
   font-size: 12px;
-  margin-bottom: 7px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
 }
 
 .pair {
-  font-size: 29px;
-  font-weight: bold;
-}
-
-.timeframe {
-  color: #9eacc4;
-  margin-top: 5px;
+  font-size: 31px;
+  font-weight: 800;
 }
 
 .signal {
-  font-size: 34px;
-  font-weight: bold;
-  margin: 15px 0;
+  text-align: center;
+  font-size: 42px;
+  font-weight: 900;
+  margin: 18px 0;
 }
 
 .up {
@@ -91,33 +89,50 @@ body {
 }
 
 .score {
+  text-align: center;
   font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 18px;
 }
 
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-top: 15px;
 }
 
 .box {
-  background: #0d1526;
-  border-radius: 12px;
-  padding: 12px;
+  background: #0b1323;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid #1c2a43;
+}
+
+.label {
+  color: #7f8da7;
+  font-size: 11px;
+  margin-bottom: 6px;
 }
 
 .value {
   font-size: 17px;
-  font-weight: bold;
+  font-weight: 800;
+}
+
+.confirmed {
+  color: #45d483;
+}
+
+.waiting {
+  color: #ffd166;
 }
 
 button {
   width: 100%;
   padding: 14px;
-  margin-top: 14px;
-  border: none;
-  border-radius: 12px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 13px;
   background: #285bd7;
   color: white;
   font-size: 15px;
@@ -125,15 +140,15 @@ button {
 }
 
 .updated {
-  color: #aebbd2;
+  color: #9aa8c0;
   font-size: 13px;
 }
 
 .footer {
   text-align: center;
-  color: #71809a;
+  color: #65738d;
   font-size: 11px;
-  margin-top: 15px;
+  margin-top: 18px;
 }
 </style>
 </head>
@@ -149,7 +164,9 @@ button {
 
   <div class="card">
 
-    <div class="label">BEST SINGLE</div>
+    <div class="single-title">
+      BEST SINGLE
+    </div>
 
     <div id="pair" class="pair">
       DATA WAITING
@@ -166,44 +183,36 @@ button {
     <div class="grid">
 
       <div class="box">
-        <div class="label">5M</div>
-        <div id="tf5" class="value">
-          --
-        </div>
+        <div class="label">5M CONFIRMATION</div>
+        <div id="tf5" class="value waiting">--</div>
       </div>
 
       <div class="box">
-        <div class="label">1M</div>
-        <div id="tf1" class="value">
-          --
-        </div>
+        <div class="label">1M CONFIRMATION</div>
+        <div id="tf1" class="value waiting">--</div>
       </div>
 
       <div class="box">
         <div class="label">PRICE</div>
-        <div id="price" class="value">
-          --
-        </div>
+        <div id="price" class="value">--</div>
       </div>
 
       <div class="box">
         <div class="label">RSI</div>
-        <div id="rsi" class="value">
-          --
-        </div>
+        <div id="rsi" class="value">--</div>
       </div>
 
     </div>
 
     <button onclick="refreshSignal()">
-      🔄 Refresh Signal
+      🔄 Refresh Single
     </button>
 
   </div>
 
   <div class="card">
 
-    <div class="label">
+    <div class="single-title">
       LAST UPDATE
     </div>
 
@@ -244,10 +253,9 @@ async function refreshSignal() {
       data.pair || "NO SIGNAL";
 
     document.getElementById("score").textContent =
-      "Score: " +
-      (data.score
-        ? data.score + "/8"
-        : "--");
+      data.score
+        ? "Score: " + data.score + "/8"
+        : "Score: --";
 
     document.getElementById("tf5").textContent =
       data.tf5 || "NO SIGNAL";
@@ -271,14 +279,20 @@ async function refreshSignal() {
     const signal =
       document.getElementById("signal");
 
+    const tf5 =
+      document.getElementById("tf5");
+
+    const tf1 =
+      document.getElementById("tf1");
+
     if (data.bias === "UP") {
 
-      signal.textContent = "UP";
+      signal.textContent = "↑ UP";
       signal.className = "signal up";
 
     } else if (data.bias === "DOWN") {
 
-      signal.textContent = "DOWN";
+      signal.textContent = "↓ DOWN";
       signal.className = "signal down";
 
     } else {
@@ -288,6 +302,18 @@ async function refreshSignal() {
 
     }
 
+    if (data.tf5 === "UP" || data.tf5 === "DOWN") {
+      tf5.className = "value confirmed";
+    } else {
+      tf5.className = "value waiting";
+    }
+
+    if (data.tf1 === "UP" || data.tf1 === "DOWN") {
+      tf1.className = "value confirmed";
+    } else {
+      tf1.className = "value waiting";
+    }
+
   } catch (error) {
 
     document.getElementById("pair").textContent =
@@ -295,6 +321,9 @@ async function refreshSignal() {
 
     document.getElementById("signal").textContent =
       "WAITING";
+
+    document.getElementById("signal").className =
+      "signal none";
 
     document.getElementById("updated").textContent =
       "Cannot load signal.json";
