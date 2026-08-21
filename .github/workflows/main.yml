@@ -6,6 +6,24 @@ on:
       - main
 
   workflow_dispatch:
+    inputs:
+      pair:
+        description: "Select pair for paper analysis"
+        required: true
+        default: "EUR/USD"
+        type: choice
+        options:
+          - EUR/USD
+          - GBP/USD
+          - USD/JPY
+          - AUD/USD
+          - USD/CAD
+          - USD/CHF
+          - EUR/GBP
+          - EUR/JPY
+          - GBP/JPY
+          - BTC/USD
+          - ETH/USD
 
   schedule:
     - cron: "*/5 * * * *"
@@ -18,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -30,8 +49,17 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Set selected pair
+        run: |
+          if [ -n "${{ github.event.inputs.pair }}" ]; then
+            echo "SELECTED_PAIR=${{ github.event.inputs.pair }}" >> "$GITHUB_ENV"
+          else
+            echo "SELECTED_PAIR=EUR/USD" >> "$GITHUB_ENV"
+          fi
+
       - name: Run scanner
         run: |
+          echo "Selected pair: $SELECTED_PAIR"
           python scanner.py
 
       - name: Update signal.json
