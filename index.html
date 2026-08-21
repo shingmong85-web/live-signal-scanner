@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>SMC ICT Single Scanner</title>
+<title>SMC + ICT Paper Scanner</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#080d18">
@@ -22,7 +22,7 @@ body {
 }
 
 .container {
-  max-width: 520px;
+  max-width: 560px;
   margin: auto;
   padding: 18px;
 }
@@ -36,57 +36,40 @@ body {
 
 .title {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: bold;
 }
 
 .badge {
   background: #17233d;
   color: #9db6ff;
-  padding: 7px 11px;
+  padding: 6px 10px;
   border-radius: 20px;
   font-size: 11px;
-  font-weight: bold;
 }
 
 .card {
-  background: #111a2d;
-  border: 1px solid #263653;
-  border-radius: 20px;
-  padding: 20px;
+  background: #121a2d;
+  border: 1px solid #273653;
+  border-radius: 18px;
+  padding: 18px;
   margin-bottom: 14px;
 }
 
-.single-title {
-  color: #9eacc4;
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  margin-bottom: 8px;
-}
-
-select {
-  width: 100%;
-  padding: 14px;
-  border-radius: 13px;
-  border: 1px solid #314362;
-  background: #0b1323;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  outline: none;
-  margin-bottom: 10px;
+.label {
+  color: #aebbd2;
+  font-size: 11px;
+  margin-bottom: 7px;
 }
 
 .pair {
-  font-size: 31px;
-  font-weight: 800;
+  font-size: 30px;
+  font-weight: bold;
 }
 
 .signal {
-  text-align: center;
-  font-size: 42px;
-  font-weight: 900;
-  margin: 18px 0;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 14px 0;
 }
 
 .up {
@@ -102,66 +85,65 @@ select {
 }
 
 .score {
-  text-align: center;
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 18px;
+  font-size: 17px;
 }
 
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  margin-top: 16px;
 }
 
 .box {
-  background: #0b1323;
-  border-radius: 14px;
-  padding: 14px;
-  border: 1px solid #1c2a43;
-}
-
-.label {
-  color: #7f8da7;
-  font-size: 11px;
-  margin-bottom: 6px;
+  background: #0d1526;
+  border-radius: 12px;
+  padding: 12px;
 }
 
 .value {
-  font-size: 17px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: bold;
+  word-break: break-word;
 }
 
-.confirmed {
-  color: #45d483;
+.reason {
+  color: #c2cce0;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.waiting {
-  color: #ffd166;
+.updated {
+  color: #aebbd2;
+  font-size: 13px;
+}
+
+.status {
+  margin-top: 10px;
+  padding: 9px;
+  border-radius: 10px;
+  background: #0d1526;
+  color: #9db6ff;
+  font-size: 12px;
 }
 
 button {
   width: 100%;
   padding: 14px;
-  margin-top: 10px;
-  border: 0;
-  border-radius: 13px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 12px;
   background: #285bd7;
   color: white;
   font-size: 15px;
   font-weight: bold;
 }
 
-.updated {
-  color: #9aa8c0;
-  font-size: 13px;
-}
-
 .footer {
   text-align: center;
-  color: #65738d;
+  color: #71809a;
   font-size: 11px;
-  margin-top: 18px;
+  margin-top: 15px;
 }
 </style>
 </head>
@@ -171,44 +153,16 @@ button {
 <div class="container">
 
   <div class="header">
-    <div class="title">SMC + ICT Single</div>
+    <div class="title">SMC + ICT Scanner</div>
     <div class="badge">PAPER</div>
   </div>
 
   <div class="card">
 
-    <div class="single-title">
-      SELECT PAIR
-    </div>
-
-    <select id="pairSelect">
-      <option value="EUR/USD">EUR/USD</option>
-      <option value="GBP/USD">GBP/USD</option>
-      <option value="USD/JPY">USD/JPY</option>
-      <option value="AUD/USD">AUD/USD</option>
-      <option value="USD/CAD">USD/CAD</option>
-      <option value="USD/CHF">USD/CHF</option>
-      <option value="EUR/GBP">EUR/GBP</option>
-      <option value="EUR/JPY">EUR/JPY</option>
-      <option value="GBP/JPY">GBP/JPY</option>
-      <option value="BTC/USD">BTC/USD</option>
-      <option value="ETH/USD">ETH/USD</option>
-    </select>
-
-    <button onclick="refreshSignal()">
-      🔍 GET SINGLE
-    </button>
-
-  </div>
-
-  <div class="card">
-
-    <div class="single-title">
-      BEST SINGLE
-    </div>
+    <div class="label">SELECTED PAIR</div>
 
     <div id="pair" class="pair">
-      DATA WAITING
+      WAITING
     </div>
 
     <div id="signal" class="signal none">
@@ -222,13 +176,13 @@ button {
     <div class="grid">
 
       <div class="box">
-        <div class="label">5M CONFIRMATION</div>
-        <div id="tf5" class="value waiting">--</div>
+        <div class="label">5M</div>
+        <div id="tf5" class="value">--</div>
       </div>
 
       <div class="box">
-        <div class="label">1M CONFIRMATION</div>
-        <div id="tf1" class="value waiting">--</div>
+        <div class="label">1M</div>
+        <div id="tf1" class="value">--</div>
       </div>
 
       <div class="box">
@@ -241,34 +195,115 @@ button {
         <div id="rsi" class="value">--</div>
       </div>
 
+      <div class="box">
+        <div class="label">EMA 20</div>
+        <div id="ema20" class="value">--</div>
+      </div>
+
+      <div class="box">
+        <div class="label">EMA 50</div>
+        <div id="ema50" class="value">--</div>
+      </div>
+
+      <div class="box">
+        <div class="label">EMA 200</div>
+        <div id="ema200" class="value">--</div>
+      </div>
+
+      <div class="box">
+        <div class="label">MACD</div>
+        <div id="macd" class="value">--</div>
+      </div>
+
+      <div class="box">
+        <div class="label">MACD SIGNAL</div>
+        <div id="macdSignal" class="value">--</div>
+      </div>
+
+      <div class="box">
+        <div class="label">STOCH K</div>
+        <div id="stochK" class="value">--</div>
+      </div>
+
+      <div class="box">
+        <div class="label">STOCH D</div>
+        <div id="stochD" class="value">--</div>
+      </div>
+
+      <div class="box">
+        <div class="label">BB MID</div>
+        <div id="bbMid" class="value">--</div>
+      </div>
+
+    </div>
+
+    <button onclick="refreshSignal()">
+      🔄 Refresh Analysis
+    </button>
+
+  </div>
+
+  <div class="card">
+
+    <div class="label">5M ANALYSIS</div>
+
+    <div id="reason5" class="reason">
+      Waiting...
     </div>
 
   </div>
 
   <div class="card">
 
-    <div class="single-title">
-      LAST UPDATE
-    </div>
+    <div class="label">1M ANALYSIS</div>
 
-    <div id="updated" class="updated">
+    <div id="reason1" class="reason">
       Waiting...
     </div>
 
   </div>
 
+  <div class="card">
+
+    <div class="label">LAST UPDATE</div>
+
+    <div id="updated" class="updated">
+      Waiting...
+    </div>
+
+    <div id="status" class="status">
+      Waiting for market analysis...
+    </div>
+
+  </div>
+
   <div class="footer">
-    SMC + ICT • 1M / 5M • Paper Analysis Only
+    Real Market Data • SMC + ICT • 1M / 5M • Paper Analysis Only
   </div>
 
 </div>
 
+
 <script>
 
-async function refreshSignal() {
+function setValue(id, value, decimals = 5) {
 
-  const selectedPair =
-    document.getElementById("pairSelect").value;
+  const element = document.getElementById(id);
+
+  if (value === null || value === undefined) {
+    element.textContent = "--";
+    return;
+  }
+
+  if (typeof value === "number") {
+    element.textContent = Number(value).toFixed(decimals);
+  } else {
+    element.textContent = value;
+  }
+}
+
+
+async function refreshSignal() {
 
   try {
 
@@ -281,120 +316,182 @@ async function refreshSignal() {
 
     if (!response.ok) {
       throw new Error(
-        "signal.json HTTP " + response.status
+        "HTTP " + response.status
       );
     }
 
     const data = await response.json();
 
-    /*
-      Current scanner saves only the BEST SINGLE.
-      Therefore we only display it when the selected
-      pair matches the saved signal.
-    */
-
-    if (data.pair !== selectedPair) {
-
-      document.getElementById("pair").textContent =
-        selectedPair;
-
-      document.getElementById("signal").textContent =
-        "NO SIGNAL";
-
-      document.getElementById("signal").className =
-        "signal none";
-
-      document.getElementById("score").textContent =
-        "No confirmed setup";
-
-      document.getElementById("tf5").textContent =
-        "NO SIGNAL";
-
-      document.getElementById("tf1").textContent =
-        "NO SIGNAL";
-
-      document.getElementById("price").textContent =
-        "--";
-
-      document.getElementById("rsi").textContent =
-        "--";
-
-      document.getElementById("updated").textContent =
-        "Selected pair is not the current Best Single";
-
-      return;
-    }
 
     document.getElementById("pair").textContent =
-      data.pair || selectedPair;
+      data.pair || "NO SIGNAL";
 
-    document.getElementById("score").textContent =
-      data.score
-        ? "Score: " + data.score + "/8"
-        : "Score: --";
 
     document.getElementById("tf5").textContent =
       data.tf5 || "NO SIGNAL";
 
+
     document.getElementById("tf1").textContent =
       data.tf1 || "NO SIGNAL";
 
-    document.getElementById("price").textContent =
-      data.price != null
-        ? data.price
-        : "--";
 
-    document.getElementById("rsi").textContent =
-      data.rsi != null
-        ? Number(data.rsi).toFixed(2)
-        : "--";
+    document.getElementById("score").textContent =
+      "Score: " +
+      (
+        data.score !== undefined
+        ? data.score + "/12"
+        : "--"
+      );
+
+
+    setValue(
+      "price",
+      data.price,
+      5
+    );
+
+
+    setValue(
+      "rsi",
+      data.rsi,
+      2
+    );
+
+
+    setValue(
+      "ema20",
+      data.ema20,
+      5
+    );
+
+
+    setValue(
+      "ema50",
+      data.ema50,
+      5
+    );
+
+
+    setValue(
+      "ema200",
+      data.ema200,
+      5
+    );
+
+
+    setValue(
+      "macd",
+      data.macd,
+      6
+    );
+
+
+    setValue(
+      "macdSignal",
+      data.macd_signal,
+      6
+    );
+
+
+    setValue(
+      "stochK",
+      data.stoch_k,
+      2
+    );
+
+
+    setValue(
+      "stochD",
+      data.stoch_d,
+      2
+    );
+
+
+    setValue(
+      "bbMid",
+      data.bb_mid,
+      5
+    );
+
+
+    document.getElementById("reason5").textContent =
+      data.reason_5m || "No information";
+
+
+    document.getElementById("reason1").textContent =
+      data.reason_1m || "No information";
+
 
     document.getElementById("updated").textContent =
       data.updated || "Waiting...";
 
+
+    document.getElementById("status").textContent =
+      data.status || "Waiting...";
+
+
     const signal =
       document.getElementById("signal");
 
+
     if (data.bias === "UP") {
 
-      signal.textContent = "↑ UP";
+      signal.textContent = "UP";
       signal.className = "signal up";
 
-    } else if (data.bias === "DOWN") {
+    }
 
-      signal.textContent = "↓ DOWN";
+    else if (data.bias === "DOWN") {
+
+      signal.textContent = "DOWN";
       signal.className = "signal down";
 
-    } else {
+    }
+
+    else {
 
       signal.textContent = "NO SIGNAL";
       signal.className = "signal none";
 
     }
 
-  } catch (error) {
+
+  }
+
+  catch (error) {
 
     document.getElementById("pair").textContent =
-      selectedPair;
-
-    document.getElementById("signal").textContent =
       "DATA ERROR";
 
-    document.getElementById("signal").className =
-      "signal none";
+    document.getElementById("signal").textContent =
+      "WAITING";
 
     document.getElementById("updated").textContent =
       "Cannot load signal.json";
 
+    document.getElementById("status").textContent =
+      error.message;
+
     console.log(error);
+
   }
+
 }
+
+
+refreshSignal();
+
+setInterval(
+  refreshSignal,
+  30000
+);
+
 
 if ("serviceWorker" in navigator) {
 
   window.addEventListener(
     "load",
-    function () {
+    function() {
 
       navigator.serviceWorker
         .register("sw.js")
