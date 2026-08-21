@@ -1,119 +1,267 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
 
-<title>Single Demo Analyzer</title>
+  <title>SMC ICT Single Scanner</title>
 
-<style>
+  <link rel="manifest" href="manifest.json">
 
-*{
-    box-sizing:border-box;
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #080d18;
+      color: white;
+    }
+
+    .app {
+      max-width: 520px;
+      margin: auto;
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .status {
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 20px;
+      background: #17233d;
+      color: #8fb0ff;
+    }
+
+    .card {
+      background: #111a2c;
+      border: 1px solid #263653;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    .label {
+      color: #9eacc4;
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .pair {
+      font-size: 30px;
+      font-weight: bold;
+    }
+
+    .signal {
+      font-size: 36px;
+      font-weight: bold;
+      margin: 12px 0;
+    }
+
+    .up {
+      color: #42d486;
+    }
+
+    .down {
+      color: #ff6575;
+    }
+
+    .none {
+      color: #ffd166;
+    }
+
+    .score {
+      font-size: 18px;
+    }
+
+    .info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .box {
+      background: #0c1424;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .value {
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #285bd7;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .small {
+      color: #8f9db4;
+      font-size: 11px;
+      text-align: center;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <div class="title">SMC + ICT Single</div>
+    <div class="status">PAPER</div>
+  </div>
+
+  <div class="card">
+
+    <div class="label">BEST SINGLE</div>
+
+    <div id="pair" class="pair">
+      NO SIGNAL
+    </div>
+
+    <div id="signal" class="signal none">
+      WAITING
+    </div>
+
+    <div id="score" class="score">
+      Score: --
+    </div>
+
+    <div class="info">
+
+      <div class="box">
+        <div class="label">5M</div>
+        <div id="tf5" class="value">
+          NO SIGNAL
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="label">1M</div>
+        <div id="tf1" class="value">
+          NO SIGNAL
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="label">PRICE</div>
+        <div id="price" class="value">
+          --
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="label">RSI</div>
+        <div id="rsi" class="value">
+          --
+        </div>
+      </div>
+
+    </div>
+
+    <button onclick="refreshSignal()">
+      🔄 Refresh Signal
+    </button>
+
+  </div>
+
+  <div class="card">
+
+    <div class="label">LAST UPDATE</div>
+
+    <div id="updated">
+      Waiting for scanner...
+    </div>
+
+    <div class="small">
+      SMC + ICT • 1M / 5M • Demo/Paper Analysis
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+function refreshSignal() {
+
+  /*
+   * Demo display.
+   * Real scanner data will be connected
+   * to this dashboard in the next step.
+   */
+
+  document.getElementById("pair").textContent =
+    "NO SIGNAL";
+
+  document.getElementById("signal").textContent =
+    "WAITING";
+
+  document.getElementById("signal").className =
+    "signal none";
+
+  document.getElementById("score").textContent =
+    "Score: --";
+
+  document.getElementById("tf5").textContent =
+    "NO SIGNAL";
+
+  document.getElementById("tf1").textContent =
+    "NO SIGNAL";
+
+  document.getElementById("price").textContent =
+    "--";
+
+  document.getElementById("rsi").textContent =
+    "--";
+
+  document.getElementById("updated").textContent =
+    new Date().toLocaleString();
+
 }
 
-body{
-    margin:0;
-    font-family:Arial,sans-serif;
-    background:#0b1020;
-    color:white;
+if ("serviceWorker" in navigator) {
+
+  window.addEventListener("load", function () {
+
+    navigator.serviceWorker.register("sw.js")
+      .catch(function (error) {
+        console.log(
+          "Service worker error:",
+          error
+        );
+      });
+
+  });
+
 }
 
-.container{
-    max-width:520px;
-    margin:auto;
-    padding:18px;
-}
+</script>
 
-.header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:18px;
-}
-
-.title{
-    font-size:23px;
-    font-weight:bold;
-}
-
-.badge{
-    background:#17233d;
-    color:#9db6ff;
-    padding:6px 10px;
-    border-radius:20px;
-    font-size:11px;
-}
-
-.card{
-    background:#121a2d;
-    border:1px solid #273653;
-    border-radius:18px;
-    padding:18px;
-    margin-bottom:14px;
-}
-
-label{
-    display:block;
-    font-size:13px;
-    color:#aebbd2;
-    margin-bottom:7px;
-}
-
-select,
-button{
-    width:100%;
-    padding:13px;
-    border-radius:12px;
-    border:1px solid #344563;
-    background:#0e1628;
-    color:white;
-    font-size:15px;
-}
-
-button{
-    margin-top:12px;
-    background:#285bd7;
-    border:none;
-    font-weight:bold;
-}
-
-button:active{
-    transform:scale(.98);
-}
-
-.pair{
-    font-size:27px;
-    font-weight:bold;
-}
-
-.timeframe{
-    color:#9eacc4;
-    margin-top:4px;
-}
-
-.result{
-    font-size:31px;
-    font-weight:bold;
-    margin:15px 0;
-}
-
-.up{
-    color:#45d483;
-}
-
-.down{
-    color:#ff6878;
-}
-
-.none{
-    color:#ffd166;
-}
-
-.score{
-    font-size:18px;
-}
-
-.row{
-    display:flex;
+</body>
+</html>
