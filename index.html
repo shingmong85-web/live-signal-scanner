@@ -1,267 +1,74 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0b1020">
-
-  <title>SMC ICT Single Scanner</title>
-
-  <link rel="manifest" href="manifest.json">
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #080d18;
-      color: white;
-    }
-
-    .app {
-      max-width: 520px;
-      margin: auto;
-      padding: 16px;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .title {
-      font-size: 22px;
-      font-weight: 700;
-    }
-
-    .status {
-      font-size: 11px;
-      padding: 6px 10px;
-      border-radius: 20px;
-      background: #17233d;
-      color: #8fb0ff;
-    }
-
-    .card {
-      background: #111a2c;
-      border: 1px solid #263653;
-      border-radius: 18px;
-      padding: 18px;
-      margin-bottom: 14px;
-    }
-
-    .label {
-      color: #9eacc4;
-      font-size: 12px;
-      margin-bottom: 7px;
-    }
-
-    .pair {
-      font-size: 30px;
-      font-weight: bold;
-    }
-
-    .signal {
-      font-size: 36px;
-      font-weight: bold;
-      margin: 12px 0;
-    }
-
-    .up {
-      color: #42d486;
-    }
-
-    .down {
-      color: #ff6575;
-    }
-
-    .none {
-      color: #ffd166;
-    }
-
-    .score {
-      font-size: 18px;
-    }
-
-    .info {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .box {
-      background: #0c1424;
-      border-radius: 12px;
-      padding: 12px;
-    }
-
-    .value {
-      font-size: 17px;
-      font-weight: bold;
-    }
-
-    button {
-      width: 100%;
-      border: 0;
-      border-radius: 12px;
-      padding: 14px;
-      background: #285bd7;
-      color: white;
-      font-size: 15px;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-
-    .small {
-      color: #8f9db4;
-      font-size: 11px;
-      text-align: center;
-      margin-top: 14px;
-    }
-  </style>
-</head>
-
-<body>
-
-<div class="app">
-
-  <div class="header">
-    <div class="title">SMC + ICT Single</div>
-    <div class="status">PAPER</div>
-  </div>
-
-  <div class="card">
-
-    <div class="label">BEST SINGLE</div>
-
-    <div id="pair" class="pair">
-      NO SIGNAL
-    </div>
-
-    <div id="signal" class="signal none">
-      WAITING
-    </div>
-
-    <div id="score" class="score">
-      Score: --
-    </div>
-
-    <div class="info">
-
-      <div class="box">
-        <div class="label">5M</div>
-        <div id="tf5" class="value">
-          NO SIGNAL
-        </div>
-      </div>
-
-      <div class="box">
-        <div class="label">1M</div>
-        <div id="tf1" class="value">
-          NO SIGNAL
-        </div>
-      </div>
-
-      <div class="box">
-        <div class="label">PRICE</div>
-        <div id="price" class="value">
-          --
-        </div>
-      </div>
-
-      <div class="box">
-        <div class="label">RSI</div>
-        <div id="rsi" class="value">
-          --
-        </div>
-      </div>
-
-    </div>
-
-    <button onclick="refreshSignal()">
-      🔄 Refresh Signal
-    </button>
-
-  </div>
-
-  <div class="card">
-
-    <div class="label">LAST UPDATE</div>
-
-    <div id="updated">
-      Waiting for scanner...
-    </div>
-
-    <div class="small">
-      SMC + ICT • 1M / 5M • Demo/Paper Analysis
-    </div>
-
-  </div>
-
-</div>
-
 <script>
 
-function refreshSignal() {
+async function refreshSignal() {
 
-  /*
-   * Demo display.
-   * Real scanner data will be connected
-   * to this dashboard in the next step.
-   */
+  try {
 
-  document.getElementById("pair").textContent =
-    "NO SIGNAL";
+    const response = await fetch(
+      "signal.json?time=" + Date.now()
+    );
 
-  document.getElementById("signal").textContent =
-    "WAITING";
+    const data = await response.json();
 
-  document.getElementById("signal").className =
-    "signal none";
+    document.getElementById("pair").textContent =
+      data.pair || "NO SIGNAL";
 
-  document.getElementById("score").textContent =
-    "Score: --";
+    document.getElementById("score").textContent =
+      "Score: " +
+      (data.score ? data.score + "/8" : "--");
 
-  document.getElementById("tf5").textContent =
-    "NO SIGNAL";
+    document.getElementById("tf5").textContent =
+      data.tf5 || "NO SIGNAL";
 
-  document.getElementById("tf1").textContent =
-    "NO SIGNAL";
+    document.getElementById("tf1").textContent =
+      data.tf1 || "NO SIGNAL";
 
-  document.getElementById("price").textContent =
-    "--";
+    document.getElementById("price").textContent =
+      data.price || "--";
 
-  document.getElementById("rsi").textContent =
-    "--";
+    document.getElementById("rsi").textContent =
+      data.rsi ? Number(data.rsi).toFixed(2) : "--";
 
-  document.getElementById("updated").textContent =
-    new Date().toLocaleString();
+    document.getElementById("updated").textContent =
+      data.updated || "Waiting...";
 
+    const signal =
+      document.getElementById("signal");
+
+    if (data.bias === "UP") {
+
+      signal.textContent = "UP";
+      signal.className = "signal up";
+
+    } else if (data.bias === "DOWN") {
+
+      signal.textContent = "DOWN";
+      signal.className = "signal down";
+
+    } else {
+
+      signal.textContent = "NO SIGNAL";
+      signal.className = "signal none";
+
+    }
+
+  } catch (error) {
+
+    document.getElementById("pair").textContent =
+      "DATA WAITING";
+
+    document.getElementById("signal").textContent =
+      "WAITING";
+
+    console.log(error);
+  }
 }
 
-if ("serviceWorker" in navigator) {
+refreshSignal();
 
-  window.addEventListener("load", function () {
-
-    navigator.serviceWorker.register("sw.js")
-      .catch(function (error) {
-        console.log(
-          "Service worker error:",
-          error
-        );
-      });
-
-  });
-
-}
+setInterval(
+  refreshSignal,
+  30000
+);
 
 </script>
-
-</body>
-</html>
