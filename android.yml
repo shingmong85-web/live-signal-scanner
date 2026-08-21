@@ -185,7 +185,6 @@ jobs:
           import android.app.Activity;
           import android.os.Bundle;
           import android.graphics.Color;
-          import android.view.View;
           import android.widget.TextView;
           import android.widget.Button;
 
@@ -215,7 +214,6 @@ jobs:
                   updated = findViewById(R.id.updated);
 
                   Button refresh = findViewById(R.id.refresh);
-
                   refresh.setOnClickListener(v -> loadSignal());
 
                   loadSignal();
@@ -268,72 +266,46 @@ jobs:
                                   data.optInt("score", 0);
 
                               String tf5 =
-                                  data.optString(
-                                      "tf5",
-                                      "NO SIGNAL"
-                                  );
+                                  data.optString("tf5", "NO SIGNAL");
 
                               String tf1 =
-                                  data.optString(
-                                      "tf1",
-                                      "NO SIGNAL"
-                                  );
+                                  data.optString("tf1", "NO SIGNAL");
 
                               String price =
-                                  data.optString(
-                                      "price",
-                                      "--"
-                                  );
+                                  data.optString("price", "--");
 
                               String rsi =
-                                  data.optString(
-                                      "rsi",
-                                      "--"
-                                  );
+                                  data.optString("rsi", "--");
 
                               pair.setText(
-                                  p.isEmpty()
-                                  ? "NO SIGNAL"
-                                  : p
+                                  p.isEmpty() ? "NO SIGNAL" : p
                               );
 
                               signal.setText(
-                                  bias.isEmpty()
-                                  ? "NO SIGNAL"
-                                  : bias
+                                  bias.isEmpty() ? "NO SIGNAL" : bias
                               );
 
                               if (bias.equals("UP")) {
                                   signal.setTextColor(
-                                      Color.rgb(
-                                          69, 212, 131
-                                      )
+                                      Color.rgb(69, 212, 131)
                                   );
-                              }
-                              else if (bias.equals("DOWN")) {
+                              } else if (bias.equals("DOWN")) {
                                   signal.setTextColor(
-                                      Color.rgb(
-                                          255, 104, 120
-                                      )
+                                      Color.rgb(255, 104, 120)
                                   );
-                              }
-                              else {
+                              } else {
                                   signal.setTextColor(
-                                      Color.rgb(
-                                          255, 209, 102
-                                      )
+                                      Color.rgb(255, 209, 102)
                                   );
                               }
 
                               details.setText(
                                   "Score: " +
-                                  (score > 0
-                                      ? score + "/8"
-                                      : "--") +
-                                  "\\n5M: " + tf5 +
-                                  "\\n1M: " + tf1 +
-                                  "\\nPrice: " + price +
-                                  "\\nRSI: " + rsi
+                                  (score > 0 ? score + "/8" : "--") +
+                                  "\n5M: " + tf5 +
+                                  "\n1M: " + tf1 +
+                                  "\nPrice: " + price +
+                                  "\nRSI: " + rsi
                               );
 
                               updated.setText(
