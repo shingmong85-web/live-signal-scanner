@@ -1,266 +1,190 @@
 import pandas as pd
 import random
 
-# =============================
-# DEMO 1-MINUTE DATA
-# =============================
+PAIRS = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
 
-price = 100.0
-rows = []
+# --------------------------------
+# DEMO DATA GENERATOR
+# --------------------------------
 
-for i in range(500):
-    change = random.uniform(-0.30, 0.30)
+def generate_data():
+    price = 100.0
+    rows = []
 
-    open_price = price
-    close_price = price + change
+    for _ in range(600):
+        change = random.uniform(-0.30, 0.30)
 
-    high_price = max(open_price, close_price) + random.uniform(0, 0.10)
-    low_price = min(open_price, close_price) - random.uniform(0, 0.10)
+        open_price = price
+        close_price = price + change
 
-    rows.append({
-        "open": open_price,
-        "high": high_price,
-        "low": low_price,
-        "close": close_price
-    })
+        high_price = max(open_price, close_price) + random.uniform(0, 0.10)
+        low_price = min(open_price, close_price) - random.uniform(0, 0.10)
 
-    price = close_price
+        rows.append({
+            "open": open_price,
+            "high": high_price,
+            "low": low_price,
+            "close": close_price
+        })
 
-df = pd.DataFrame(rows)
+        price = close_price
 
-# =============================
-# 5-MINUTE CANDLES
-# =============================
+    return pd.DataFrame(rows)
 
-df["group"] = df.index // 5
 
-df5 = df.groupby("group").agg({
-    "open": "first",
-    "high": "max",
-    "low": "min",
-    "close": "last"
-}).reset_index(drop=True)
+# --------------------------------
+# ANALYZER
+# --------------------------------
 
-# =============================
-# EMA
-# =============================
+def analyze(df):
 
-df5["EMA20"] = df5["close"].ewm(span=20, adjust=False).mean()
-df5["EMA50"] = df5["close"].ewm(span=50, adjust=False).mean()
-df5["EMA200"] = df5["close"].ewm(span=200, adjust=False).mean()
+    df["EMA20"] = df["close"].ewm(
+        span=20, adjust=False
+    ).mean()
 
-# =============================
-# RSI
-# =============================
+    df["EMA50"] = df["close"].ewm(
+        span=50, adjust=False
+    ).mean()
 
-delta = df5["close"].diff()
+    df["EMA200"] = df["close"].ewm(
+        span=200, adjust=False
+    ).mean()
 
-gain = delta.clip(lower=0).rolling(14).mean()
-loss = (-delta.clip(upper=0)).rolling(14).mean()
+    delta = df["close"].diff()
 
-rs = gain / loss.replace(0, 1e-10)
+    gain = delta.clip(lower=0).rolling(14).mean()
+    loss = (-delta.clip(upper=0)).rolling(14).mean()
 
-df5["RSI"] = 100 - (100 / (1 + rs))
+    rs = gain / loss.replace(0, 1e-10)
 
-# =============================
-# MACD
-# =============================
+    df["RSI"] = 100 - (100 / (1 + rs))
 
-ema12 = df5["close"].ewm(span=12, adjust=False).mean()
-ema26 = df5["close"].ewm(span=26, adjust=False).mean()
+    ema12 = df["close"].ewm(
+        span=12, adjust=False
+    ).mean()
 
-df5["MACD"] = ema12 - ema26
-df5["MACD_SIGNAL"] = df5["MACD"].ewm(span=9, adjust=False).mean()
+    ema26 = df["close"].ewm(
+        span=26, adjust=False
+    ).mean()
 
-# =============================
-# SUPPORT / RESISTANCE
-# =============================
+    df["MACD"] = ema12 - ema26
 
-lookback = 20
+    df["MACD_SIGNAL"] = df["MACD"].ewm(
+        span=9, adjust=False
+    ).mean()
 
-support = df5["low"].rolling(lookback).min().iloc[-1]
-resistance = df5["high"].rolling(lookback).max().iloc[-1]
+    last = df.iloc[-1]
 
-# =============================
-# MARKET STRUCTURE
-# =============================
+    bullish = 0
+    bearish = 0
 
-prev = df5.iloc[-2]
-last = df5.iloc[-1]
+    if last["EMA20"] > last["EMA50"]:
+        bullish += 1
+    else:
+        bearish += 1
 
-if last["high"] > prev["high"] and last["low"] > prev["low"]:
-    structure = "BULLISH"
-elif last["high"] < prev["high"] and last["low"] < prev["low"]:
-    structure = "BEARISH"
-else:
-    structure = "RANGE"
+    if last["EMA50"] > last["EMA200"]:
+        bullish += 1
+    else:
+        bearish += 1
 
-# =============================
-# LIQUIDITY SWEEP
-# =============================
+    if last["RSI"] > 50:
+        bullish += 1
+    elif last["RSI"] < 50:
+        bearish += 1
 
-recent_high = df5["high"].iloc[-11:-1].max()
-recent_low = df5["low"].iloc[-11:-1].min()
+    if last["MACD"] > last["MACD_SIGNAL"]:
+        bullish += 1
+    else:
+        bearish += 1
 
-bullish_sweep = (
-    last["low"] < recent_low
-    and last["close"] > recent_low
+    if bullish >= 3 and bullish > bearish:
+        signal = "UP BIAS"
+    elif bearish >= 3 and bearish > bullish:
+        signal = "DOWN BIAS"
+    else:
+        signal = "NO SIGNAL"
+
+    return signal
+
+
+# --------------------------------
+# HISTORY TEST
+# --------------------------------
+
+history = []
+
+for pair in PAIRS:
+
+    df = generate_data()
+
+    for i in range(200, len(df) - 1, 5):
+
+        window = df.iloc[:i].copy()
+
+        signal = analyze(window)
+
+        current_price = df.iloc[i]["close"]
+        next_price = df.iloc[i + 1]["close"]
+
+        if signal == "UP BIAS":
+            outcome = "CORRECT" if next_price > current_price else "WRONG"
+
+        elif signal == "DOWN BIAS":
+            outcome = "CORRECT" if next_price < current_price else "WRONG"
+
+        else:
+            outcome = "SKIPPED"
+
+        history.append({
+            "pair": pair,
+            "signal": signal,
+            "current_price": round(current_price, 5),
+            "next_price": round(next_price, 5),
+            "outcome": outcome
+        })
+
+
+# --------------------------------
+# RESULTS
+# --------------------------------
+
+history_df = pd.DataFrame(history)
+
+signals = history_df[
+    history_df["outcome"] != "SKIPPED"
+]
+
+correct = len(
+    signals[signals["outcome"] == "CORRECT"]
 )
 
-bearish_sweep = (
-    last["high"] > recent_high
-    and last["close"] < recent_high
-)
+total = len(signals)
 
-# =============================
-# FVG-STYLE GAP
-# =============================
-
-if len(df5) >= 3:
-
-    c1 = df5.iloc[-3]
-    c2 = df5.iloc[-2]
-    c3 = df5.iloc[-1]
-
-    bullish_fvg = c3["low"] > c1["high"]
-    bearish_fvg = c3["high"] < c1["low"]
-
+if total > 0:
+    accuracy = (correct / total) * 100
 else:
+    accuracy = 0
 
-    bullish_fvg = False
-    bearish_fvg = False
-
-# =============================
-# ORDER-BLOCK STYLE CANDLE
-# =============================
-
-body = abs(last["close"] - last["open"])
-range_size = last["high"] - last["low"]
-
-strong_candle = (
-    range_size > 0
-    and body / range_size > 0.60
-)
-
-bullish_ob = (
-    last["close"] > last["open"]
-    and strong_candle
-)
-
-bearish_ob = (
-    last["close"] < last["open"]
-    and strong_candle
-)
-
-# =============================
-# SCORING
-# =============================
-
-bullish_score = 0
-bearish_score = 0
-
-# EMA
-if last["EMA20"] > last["EMA50"]:
-    bullish_score += 1
-else:
-    bearish_score += 1
-
-if last["EMA50"] > last["EMA200"]:
-    bullish_score += 1
-else:
-    bearish_score += 1
-
-# RSI
-if last["RSI"] > 50:
-    bullish_score += 1
-elif last["RSI"] < 50:
-    bearish_score += 1
-
-# MACD
-if last["MACD"] > last["MACD_SIGNAL"]:
-    bullish_score += 1
-else:
-    bearish_score += 1
-
-# Structure
-if structure == "BULLISH":
-    bullish_score += 1
-elif structure == "BEARISH":
-    bearish_score += 1
-
-# Liquidity sweep
-if bullish_sweep:
-    bullish_score += 2
-
-if bearish_sweep:
-    bearish_score += 2
-
-# FVG
-if bullish_fvg:
-    bullish_score += 1
-
-if bearish_fvg:
-    bearish_score += 1
-
-# OB-style candle
-if bullish_ob:
-    bullish_score += 1
-
-if bearish_ob:
-    bearish_score += 1
-
-# =============================
-# FINAL RESULT
-# =============================
-
-if bullish_score >= 6 and bullish_score > bearish_score:
-    result = "UP BIAS"
-
-elif bearish_score >= 6 and bearish_score > bullish_score:
-    result = "DOWN BIAS"
-
-else:
-    result = "NO SIGNAL"
-
-# =============================
-# OUTPUT
-# =============================
 
 print("================================")
-print("ICT/MMC-STYLE DEMO ANALYZER")
+print("DEMO SIGNAL HISTORY")
 print("================================")
 
-print("Last Price:", round(last["close"], 5))
+print("Pairs tested:", ", ".join(PAIRS))
 
-print("EMA20:", round(last["EMA20"], 5))
-print("EMA50:", round(last["EMA50"], 5))
-print("EMA200:", round(last["EMA200"], 5))
+print("Total signals:", total)
+print("Correct:", correct)
 
-print("RSI:", round(last["RSI"], 2))
-
-print("MACD:", round(last["MACD"], 5))
-print("MACD Signal:", round(last["MACD_SIGNAL"], 5))
-
-print("Support:", round(support, 5))
-print("Resistance:", round(resistance, 5))
-
-print("Market Structure:", structure)
-
-print("Bullish Sweep:", bullish_sweep)
-print("Bearish Sweep:", bearish_sweep)
-
-print("Bullish FVG:", bullish_fvg)
-print("Bearish FVG:", bearish_fvg)
-
-print("Bullish OB-style:", bullish_ob)
-print("Bearish OB-style:", bearish_ob)
+print(
+    "Accuracy:",
+    round(accuracy, 2),
+    "%"
+)
 
 print("--------------------------------")
-print("Bullish Score:", bullish_score)
-print("Bearish Score:", bearish_score)
-print("--------------------------------")
-
-print("RESULT:", result)
+print("Recent results:")
+print(history_df.tail(10).to_string(index=False))
 
 print("--------------------------------")
 print("Paper/demo analysis only.")
