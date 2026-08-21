@@ -1,4 +1,3 @@
-
 import pandas as pd
 import random
 
@@ -91,20 +90,4 @@ else:
 
 # -----------------------------
 # OUTPUT
-# -----------------------------
-print("================================")
-print("5-MINUTE DEMO MARKET ANALYZER")
-print("================================")
-
-print("Last Price:", round(last["close"], 5))
-print("EMA20:", round(last["EMA20"], 5))
-print("EMA50:", round(last["EMA50"], 5))
-print("EMA200:", round(last["EMA200"], 5))
-print("RSI:", round(last["RSI"], 2))
-
-print("--------------------------------")
-print("Result:", result)
-print("--------------------------------")
-print("Paper/demo analysis only.")
-print("No broker order is sent.")
-print("================================")
+# ----------------------------
