@@ -1,15 +1,19 @@
+
 import pandas as pd
 import random
 
-# Demo 1-minute candles
+# -----------------------------
+# DEMO 1-MINUTE MARKET DATA
+# -----------------------------
 price = 100.0
 rows = []
 
-for i in range(200):
+for i in range(300):
     change = random.uniform(-0.30, 0.30)
 
     open_price = price
     close_price = price + change
+
     high_price = max(open_price, close_price) + random.uniform(0, 0.10)
     low_price = min(open_price, close_price) - random.uniform(0, 0.10)
 
@@ -24,34 +28,83 @@ for i in range(200):
 
 df = pd.DataFrame(rows)
 
-# Indicators
-df["EMA20"] = df["close"].ewm(span=20, adjust=False).mean()
-df["EMA50"] = df["close"].ewm(span=50, adjust=False).mean()
+# -----------------------------
+# CREATE 5-MINUTE CANDLES
+# -----------------------------
+df["group"] = df.index // 5
 
-delta = df["close"].diff()
+df_5m = df.groupby("group").agg({
+    "open": "first",
+    "high": "max",
+    "low": "min",
+    "close": "last"
+}).reset_index(drop=True)
+
+# -----------------------------
+# EMA
+# -----------------------------
+df_5m["EMA20"] = df_5m["close"].ewm(
+    span=20, adjust=False
+).mean()
+
+df_5m["EMA50"] = df_5m["close"].ewm(
+    span=50, adjust=False
+).mean()
+
+df_5m["EMA200"] = df_5m["close"].ewm(
+    span=200, adjust=False
+).mean()
+
+# -----------------------------
+# RSI
+# -----------------------------
+delta = df_5m["close"].diff()
+
 gain = delta.clip(lower=0).rolling(14).mean()
 loss = (-delta.clip(upper=0)).rolling(14).mean()
 
 rs = gain / loss.replace(0, 1e-10)
-df["RSI"] = 100 - (100 / (1 + rs))
 
-last = df.iloc[-1]
+df_5m["RSI"] = 100 - (100 / (1 + rs))
 
-# Educational bias only
-if last["EMA20"] > last["EMA50"] and last["RSI"] >= 50:
-    bias = "UP BIAS"
-elif last["EMA20"] < last["EMA50"] and last["RSI"] <= 50:
-    bias = "DOWN BIAS"
+# -----------------------------
+# ANALYSIS
+# -----------------------------
+last = df_5m.iloc[-1]
+
+if (
+    last["EMA20"] > last["EMA50"]
+    and last["EMA50"] > last["EMA200"]
+    and last["RSI"] > 50
+):
+    result = "UP BIAS"
+
+elif (
+    last["EMA20"] < last["EMA50"]
+    and last["EMA50"] < last["EMA200"]
+    and last["RSI"] < 50
+):
+    result = "DOWN BIAS"
+
 else:
-    bias = "NO SIGNAL"
+    result = "NO SIGNAL"
 
+# -----------------------------
+# OUTPUT
+# -----------------------------
 print("================================")
-print("DEMO MARKET ANALYZER")
+print("5-MINUTE DEMO MARKET ANALYZER")
 print("================================")
+
 print("Last Price:", round(last["close"], 5))
 print("EMA20:", round(last["EMA20"], 5))
 print("EMA50:", round(last["EMA50"], 5))
+print("EMA200:", round(last["EMA200"], 5))
 print("RSI:", round(last["RSI"], 2))
-print("Result:", bias)
-print("================================")
+
+print("--------------------------------")
+print("Result:", result)
+print("--------------------------------")
 print("Paper/demo analysis only.")
+print("No broker order is sent.")
+print("================================")
