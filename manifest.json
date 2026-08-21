@@ -1,0 +1,10 @@
+{
+  "name": "SMC ICT Single Scanner",
+  "short_name": "Single Scanner",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#080d18",
+  "theme_color": "#0b1020",
+  "description": "SMC + ICT 1M and 5M paper market scanner",
+  "icons": []
+}
