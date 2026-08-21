@@ -16,26 +16,33 @@ REAL_PAIRS = {
     "ETH/USD": "ETH-USD"
 }
 
-def get_data(symbol, interval="5m", range_="5d"):
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+
+def get_data(symbol, interval, range_="5d"):
+
+    url = (
+        "https://query1.finance.yahoo.com/"
+        f"v8/finance/chart/{symbol}"
+    )
 
     params = {
         "interval": interval,
         "range": range_
     }
 
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
-    r = requests.get(
+    response = requests.get(
         url,
         params=params,
         headers=headers,
         timeout=20
     )
 
-    r.raise_for_status()
+    response.raise_for_status()
 
-    result = r.json()["chart"]["result"][0]
+    result = response.json()["chart"]["result"][0]
 
     quote = result["indicators"]["quote"][0]
 
@@ -54,7 +61,7 @@ def get_data(symbol, interval="5m", range_="5d"):
     return df.dropna().reset_index(drop=True)
 
 
-def indicators(df):
+def add_indicators(df):
 
     df = df.copy()
 
@@ -109,11 +116,66 @@ def indicators(df):
         adjust=False
     ).mean()
 
-    df["ATR"] = (
-        df["high"] - df["low"]
-    ).rolling(14).mean()
+    df["RANGE"] = (
+        df["high"] -
+        df["low"]
+    )
+
+    df["ATR"] = df["RANGE"].rolling(
+        14
+    ).mean()
 
     return df
+
+
+def timeframe_bias(df):
+
+    if len(df) < 220:
+        return "NO SIGNAL"
+
+    df = add_indicators(df)
+
+    last = df.iloc[-2]
+
+    bullish = 0
+    bearish = 0
+
+    # EMA trend
+    if (
+        last["EMA20"] >
+        last["EMA50"] >
+        last["EMA200"]
+    ):
+        bullish += 1
+
+    elif (
+        last["EMA20"] <
+        last["EMA50"] <
+        last["EMA200"]
+    ):
+        bearish += 1
+
+    # RSI
+    if last["RSI"] > 50:
+        bullish += 1
+
+    elif last["RSI"] < 50:
+        bearish += 1
+
+    # MACD
+    if last["MACD"] > last["MACD_SIGNAL"]:
+        bullish += 1
+
+    elif last["MACD"] < last["MACD_SIGNAL"]:
+        bearish += 1
+
+    if bullish >= 2 and bullish > bearish:
+        return "UP"
+
+    if bearish >= 2 and bearish > bullish:
+        return "DOWN"
+
+    return "NO SIGNAL"
 
 
 def smc_ict_score(df):
@@ -124,72 +186,71 @@ def smc_ict_score(df):
             "score": 0
         }
 
-    df = indicators(df)
+    df = add_indicators(df)
 
-    # Last CLOSED candle
     last = df.iloc[-2]
     prev = df.iloc[-3]
 
-    score_up = 0
-    score_down = 0
+    up = 0
+    down = 0
 
-    # --------------------------------------
-    # 1. EMA TREND
-    # --------------------------------------
+    # =====================================
+    # 1 EMA TREND
+    # =====================================
 
     if (
         last["EMA20"] >
         last["EMA50"] >
         last["EMA200"]
     ):
-        score_up += 1
+        up += 1
 
     elif (
         last["EMA20"] <
         last["EMA50"] <
         last["EMA200"]
     ):
-        score_down += 1
+        down += 1
 
-    # --------------------------------------
-    # 2. RSI
-    # --------------------------------------
+    # =====================================
+    # 2 RSI
+    # =====================================
 
     if last["RSI"] > 50:
-        score_up += 1
+        up += 1
 
     elif last["RSI"] < 50:
-        score_down += 1
+        down += 1
 
-    # --------------------------------------
-    # 3. MACD
-    # --------------------------------------
+    # =====================================
+    # 3 MACD
+    # =====================================
 
     if last["MACD"] > last["MACD_SIGNAL"]:
-        score_up += 1
+        up += 1
 
     elif last["MACD"] < last["MACD_SIGNAL"]:
-        score_down += 1
+        down += 1
 
-    # --------------------------------------
-    # 4. BOS / CHoCH STYLE STRUCTURE
-    # --------------------------------------
+    # =====================================
+    # 4 MARKET STRUCTURE
+    # =====================================
 
     if (
         last["high"] > prev["high"]
         and last["low"] >= prev["low"]
     ):
-        score_up += 1
+        up += 1
 
     elif (
         last["low"] < prev["low"]
         and last["high"] <= prev["high"]
     ):
-        score_down += 1
+        down += 1
 
-    # --------------------------------------
-    # 5. LIQUIDITY SWEEP STYLE CHECK
-    # --------------------------------------
+    # =====================================
+    # 5 LIQUIDITY SWEEP
+    # =====================================
 
     recent_high = df["high"].iloc[-7:-2].max()
     recent_low = df["low"].iloc[-7:-2].min()
@@ -198,17 +259,17 @@ def smc_ict_score(df):
         last["low"] < recent_low
         and last["close"] > recent_low
     ):
-        score_up += 1
+        up += 1
 
     if (
         last["high"] > recent_high
         and last["close"] < recent_high
     ):
-        score_down += 1
+        down += 1
 
-    # --------------------------------------
-    # 6. FVG STYLE CHECK
-    # --------------------------------------
+    # =====================================
+    # 6 FVG STYLE CHECK
+    # =====================================
 
     candle_a = df.iloc[-4]
     candle_c = df.iloc[-2]
@@ -224,104 +285,85 @@ def smc_ict_score(df):
     )
 
     if bullish_fvg:
-        score_up += 1
+        up += 1
 
     if bearish_fvg:
-        score_down += 1
+        down += 1
 
-    # --------------------------------------
-    # 7. DISPLACEMENT
-    # --------------------------------------
+    # =====================================
+    # 7 DISPLACEMENT
+    # =====================================
 
     avg_range = (
-        df["high"] -
-        df["low"]
-    ).rolling(20).mean().iloc[-2]
-
-    current_range = (
-        last["high"] -
-        last["low"]
+        df["RANGE"]
+        .rolling(20)
+        .mean()
+        .iloc[-2]
     )
 
-    if current_range > avg_range * 1.3:
+    if pd.notna(avg_range):
 
-        if last["close"] > last["open"]:
-            score_up += 1
+        if last["RANGE"] > avg_range * 1.3:
 
-        elif last["close"] < last["open"]:
-            score_down += 1
+            if last["close"] > last["open"]:
+                up += 1
 
-    # --------------------------------------
-    # 8. ORDER-BLOCK STYLE CANDLE
-    # --------------------------------------
+            elif last["close"] < last["open"]:
+                down += 1
+
+    # =====================================
+    # 8 ORDER-BLOCK STYLE
+    # =====================================
 
     if (
         prev["close"] < prev["open"]
         and last["close"] > last["open"]
         and last["close"] > prev["high"]
     ):
-        score_up += 1
+        up += 1
 
     elif (
         prev["close"] > prev["open"]
         and last["close"] < last["open"]
         and last["close"] < prev["low"]
     ):
-        score_down += 1
+        down += 1
 
-    # --------------------------------------
-    # 9. VOLATILITY FILTER
-    # --------------------------------------
+    # =====================================
+    # VOLATILITY FILTER
+    # =====================================
 
-    atr = last["ATR"]
+    if pd.notna(last["ATR"]):
 
-    if pd.notna(atr) and atr > 0:
+        if last["RANGE"] > last["ATR"] * 2.5:
 
-        candle_range = (
-            last["high"] -
-            last["low"]
-        )
+            up = min(up, 5)
+            down = min(down, 5)
 
-        # Extremely large candle:
-        # avoid chasing
-        if candle_range > atr * 2.5:
+    # =====================================
+    # FINAL 5M RESULT
+    # =====================================
 
-            score_up = min(score_up, 5)
-            score_down = min(score_down, 5)
-
-    # --------------------------------------
-    # FINAL DECISION
-    # --------------------------------------
-
-    if (
-        score_up >= 6
-        and score_up > score_down
-    ):
+    if up >= 6 and up > down:
 
         bias = "UP"
-        score = score_up
+        score = up
 
-    elif (
-        score_down >= 6
-        and score_down > score_up
-    ):
+    elif down >= 6 and down > up:
 
         bias = "DOWN"
-        score = score_down
+        score = down
 
     else:
 
         bias = "NO SIGNAL"
-        score = max(
-            score_up,
-            score_down
-        )
+        score = max(up, down)
 
     return {
         "bias": bias,
         "score": score,
-        "up": score_up,
-        "down": score_down,
+        "up": up,
+        "down": down,
         "price": float(last["close"]),
         "rsi": float(last["RSI"]),
         "ema20": float(last["EMA20"]),
@@ -333,13 +375,13 @@ def smc_ict_score(df):
 
 
 # ==========================================
-# SCAN
+# MAIN SCANNER
 # ==========================================
 
 results = []
 
 print("==========================================")
-print("      SMC + ICT BEST SINGLE SCANNER")
+print("     SMC + ICT 1M / 5M BEST SINGLE")
 print("==========================================")
 print()
 
@@ -347,22 +389,54 @@ for pair, symbol in REAL_PAIRS.items():
 
     try:
 
-        df = get_data(symbol)
+        # 5-minute analysis
+        df5 = get_data(
+            symbol,
+            "5m"
+        )
 
-        result = smc_ict_score(df)
+        result5 = smc_ict_score(df5)
+
+        # 1-minute confirmation
+        df1 = get_data(
+            symbol,
+            "1m",
+            "1d"
+        )
+
+        bias1 = timeframe_bias(df1)
 
         print(
             f"{pair}: "
-            f"{result['bias']} "
-            f"| Score "
-            f"{result['score']}/8"
+            f"5M={result5['bias']} "
+            f"({result5['score']}/8) "
+            f"| 1M={bias1}"
         )
 
-        if result["bias"] != "NO SIGNAL":
+        # ----------------------------------
+        # MTF CONFIRMATION
+        # ----------------------------------
+
+        confirmed = False
+
+        if (
+            result5["bias"] == "UP"
+            and bias1 == "UP"
+        ):
+            confirmed = True
+
+        elif (
+            result5["bias"] == "DOWN"
+            and bias1 == "DOWN"
+        ):
+            confirmed = True
+
+        if confirmed:
 
             results.append({
                 "pair": pair,
-                **result
+                **result5,
+                "1m_bias": bias1
             })
 
     except Exception as e:
@@ -379,7 +453,7 @@ print("------------------------------------------")
 if not results:
 
     print("BEST SINGLE: NO SIGNAL")
-    print("No strong SMC + ICT setup found.")
+    print("No confirmed 1M + 5M setup.")
 
 else:
 
@@ -399,12 +473,13 @@ else:
     )
 
     print(
-        "TIMEFRAME: 5M"
+        "5M BIAS:",
+        best["bias"]
     )
 
     print(
-        "BIAS:",
-        best["bias"]
+        "1M CONFIRMATION:",
+        best["1m_bias"]
     )
 
     print(
@@ -446,6 +521,7 @@ else:
         "MACD SIGNAL:",
         round(best["macd_signal"], 6)
     )
+
 
 print("------------------------------------------")
 
