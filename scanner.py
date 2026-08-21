@@ -1,58 +1,57 @@
-import requests
 import pandas as pd
+import random
 
-PAIR = "BTCUSDT"
-INTERVAL = "1m"
-LIMIT = 100
+# Demo 1-minute candles
+price = 100.0
+rows = []
 
-url = "https://api.binance.com/api/v3/klines"
+for i in range(200):
+    change = random.uniform(-0.30, 0.30)
 
-params = {
-    "symbol": PAIR,
-    "interval": INTERVAL,
-    "limit": LIMIT
-}
+    open_price = price
+    close_price = price + change
+    high_price = max(open_price, close_price) + random.uniform(0, 0.10)
+    low_price = min(open_price, close_price) - random.uniform(0, 0.10)
 
-response = requests.get(url, params=params, timeout=10)
-response.raise_for_status()
+    rows.append({
+        "open": open_price,
+        "high": high_price,
+        "low": low_price,
+        "close": close_price
+    })
 
-data = response.json()
+    price = close_price
 
-df = pd.DataFrame(data, columns=[
-    "time",
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    "close_time",
-    "quote_volume",
-    "trades",
-    "buy_volume",
-    "buy_quote_volume",
-    "ignore"
-])
+df = pd.DataFrame(rows)
 
-df["close"] = pd.to_numeric(df["close"])
-
+# Indicators
 df["EMA20"] = df["close"].ewm(span=20, adjust=False).mean()
 df["EMA50"] = df["close"].ewm(span=50, adjust=False).mean()
 
+delta = df["close"].diff()
+gain = delta.clip(lower=0).rolling(14).mean()
+loss = (-delta.clip(upper=0)).rolling(14).mean()
+
+rs = gain / loss.replace(0, 1e-10)
+df["RSI"] = 100 - (100 / (1 + rs))
+
 last = df.iloc[-1]
 
-if last["EMA20"] > last["EMA50"]:
-    signal = "CALL / UP BIAS"
-elif last["EMA20"] < last["EMA50"]:
-    signal = "PUT / DOWN BIAS"
+# Educational bias only
+if last["EMA20"] > last["EMA50"] and last["RSI"] >= 50:
+    bias = "UP BIAS"
+elif last["EMA20"] < last["EMA50"] and last["RSI"] <= 50:
+    bias = "DOWN BIAS"
 else:
-    signal = "NO SIGNAL"
+    bias = "NO SIGNAL"
 
 print("================================")
-print("LIVE SIGNAL SCANNER")
+print("DEMO MARKET ANALYZER")
 print("================================")
-print("Pair:", PAIR)
-print("Last Price:", last["close"])
-print("EMA20:", round(last["EMA20"], 4))
-print("EMA50:", round(last["EMA50"], 4))
-print("Signal:", signal)
+print("Last Price:", round(last["close"], 5))
+print("EMA20:", round(last["EMA20"], 5))
+print("EMA50:", round(last["EMA50"], 5))
+print("RSI:", round(last["RSI"], 2))
+print("Result:", bias)
 print("================================")
+print("Paper/demo analysis only.")
