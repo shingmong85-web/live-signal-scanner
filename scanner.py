@@ -643,4 +643,54 @@ print(
 print("------------------------------------------")
 print("REAL MARKET / PAPER ANALYSIS")
 print("No broker order is sent.")
-print("==========================================")
+print("==========================================")# ==========================================
+# SAVE LATEST RESULT FOR PWA DASHBOARD
+# ==========================================
+
+import json
+
+signal_data = {
+    "updated": datetime.now(timezone.utc).strftime(
+        "%Y-%m-%d %H:%M:%S UTC"
+    ),
+    "status": "NO SIGNAL",
+    "pair": None,
+    "bias": None,
+    "score": 0,
+    "price": None,
+    "rsi": None,
+    "tf5": "NO SIGNAL",
+    "tf1": "NO SIGNAL"
+}
+
+if results:
+
+    best = results[0]
+
+    signal_data = {
+        "updated": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S UTC"
+        ),
+        "status": "PAPER SIGNAL",
+        "pair": best["pair"],
+        "bias": best["bias"],
+        "score": best["score"],
+        "price": best["price"],
+        "rsi": best["rsi"],
+        "tf5": best["bias"],
+        "tf1": best["1m_bias"]
+    }
+
+with open(
+    "signal.json",
+    "w",
+    encoding="utf-8"
+) as f:
+
+    json.dump(
+        signal_data,
+        f,
+        indent=2
+    )
+
+print("Dashboard data saved: signal.json")
