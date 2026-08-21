@@ -2,11 +2,6 @@ import pandas as pd
 import requests
 from datetime import datetime, timezone
 
-# ==========================================
-# REAL MARKET PAIRS
-# Yahoo Finance symbols
-# ==========================================
-
 REAL_PAIRS = {
     "EUR/USD": "EURUSD=X",
     "GBP/USD": "GBPUSD=X",
@@ -21,57 +16,32 @@ REAL_PAIRS = {
     "ETH/USD": "ETH-USD"
 }
 
-# OTC আলাদা রাখা হয়েছে।
-# OTC-এর জন্য এখানে real-market data ব্যবহার করা হচ্ছে না।
-OTC_PAIRS = [
-    "EUR/USD OTC",
-    "GBP/USD OTC",
-    "USD/JPY OTC",
-    "AUD/USD OTC",
-    "USD/CAD OTC",
-    "USD/CHF OTC",
-    "EUR/GBP OTC",
-    "EUR/JPY OTC",
-    "GBP/JPY OTC"
-]
-
-
-# ==========================================
-# FETCH REAL 5-MINUTE MARKET DATA
-# ==========================================
-
-def get_market_data(symbol):
-
+def get_data(symbol, interval="5m", range_="5d"):
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 
     params = {
-        "interval": "5m",
-        "range": "5d"
+        "interval": interval,
+        "range": range_
     }
 
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
 
-    response = requests.get(
+    r = requests.get(
         url,
         params=params,
         headers=headers,
         timeout=20
     )
 
-    response.raise_for_status()
+    r.raise_for_status()
 
-    data = response.json()
+    result = r.json()["chart"]["result"][0]
 
-    result = data["chart"]["result"][0]
-
-    timestamps = result["timestamp"]
     quote = result["indicators"]["quote"][0]
 
     df = pd.DataFrame({
         "time": pd.to_datetime(
-            timestamps,
+            result["timestamp"],
             unit="s",
             utc=True
         ),
@@ -81,27 +51,13 @@ def get_market_data(symbol):
         "close": quote["close"]
     })
 
-    df = df.dropna()
-
-    return df
+    return df.dropna().reset_index(drop=True)
 
 
-# ==========================================
-# TECHNICAL ANALYSIS
-# ==========================================
-
-def analyze(df):
-
-    if len(df) < 200:
-        return {
-            "bias": "NO SIGNAL",
-            "score": 0,
-            "reason": "Not enough candles"
-        }
+def indicators(df):
 
     df = df.copy()
 
-    # EMA
     df["EMA20"] = df["close"].ewm(
         span=20,
         adjust=False
@@ -117,7 +73,6 @@ def analyze(df):
         adjust=False
     ).mean()
 
-    # RSI
     delta = df["close"].diff()
 
     gain = delta.clip(
@@ -137,7 +92,6 @@ def analyze(df):
         100 / (1 + rs)
     )
 
-    # MACD
     ema12 = df["close"].ewm(
         span=12,
         adjust=False
@@ -155,137 +109,261 @@ def analyze(df):
         adjust=False
     ).mean()
 
-    # Last closed candle
+    df["ATR"] = (
+        df["high"] - df["low"]
+    ).rolling(14).mean()
+
+    return df
+
+
+def smc_ict_score(df):
+
+    if len(df) < 220:
+        return {
+            "bias": "NO SIGNAL",
+            "score": 0
+        }
+
+    df = indicators(df)
+
+    # Last CLOSED candle
     last = df.iloc[-2]
-    previous = df.iloc[-3]
+    prev = df.iloc[-3]
 
-    bullish = 0
-    bearish = 0
+    score_up = 0
+    score_down = 0
 
-    # EMA trend
-    if last["EMA20"] > last["EMA50"]:
-        bullish += 1
-    else:
-        bearish += 1
+    # --------------------------------------
+    # 1. EMA TREND
+    # --------------------------------------
 
-    if last["EMA50"] > last["EMA200"]:
-        bullish += 1
-    else:
-        bearish += 1
+    if (
+        last["EMA20"] >
+        last["EMA50"] >
+        last["EMA200"]
+    ):
+        score_up += 1
 
-    # RSI
+    elif (
+        last["EMA20"] <
+        last["EMA50"] <
+        last["EMA200"]
+    ):
+        score_down += 1
+
+    # --------------------------------------
+    # 2. RSI
+    # --------------------------------------
+
     if last["RSI"] > 50:
-        bullish += 1
+        score_up += 1
+
     elif last["RSI"] < 50:
-        bearish += 1
+        score_down += 1
 
-    # MACD
+    # --------------------------------------
+    # 3. MACD
+    # --------------------------------------
+
     if last["MACD"] > last["MACD_SIGNAL"]:
-        bullish += 1
-    else:
-        bearish += 1
+        score_up += 1
 
-    # Candle direction
-    if last["close"] > last["open"]:
-        bullish += 1
-    elif last["close"] < last["open"]:
-        bearish += 1
+    elif last["MACD"] < last["MACD_SIGNAL"]:
+        score_down += 1
 
-    # Market structure
+    # --------------------------------------
+    # 4. BOS / CHoCH STYLE STRUCTURE
+    # --------------------------------------
+
     if (
-        last["high"] > previous["high"]
-        and last["low"] > previous["low"]
+        last["high"] > prev["high"]
+        and last["low"] >= prev["low"]
     ):
-        bullish += 1
+        score_up += 1
 
     elif (
-        last["high"] < previous["high"]
-        and last["low"] < previous["low"]
+        last["low"] < prev["low"]
+        and last["high"] <= prev["high"]
     ):
-        bearish += 1
+        score_down += 1
 
-    # ======================================
-    # FINAL FILTER
-    # ======================================
+    # --------------------------------------
+    # 5. LIQUIDITY SWEEP STYLE CHECK
+    # --------------------------------------
+
+    recent_high = df["high"].iloc[-7:-2].max()
+    recent_low = df["low"].iloc[-7:-2].min()
 
     if (
-        bullish >= 5
-        and bullish > bearish
+        last["low"] < recent_low
+        and last["close"] > recent_low
     ):
+        score_up += 1
+
+    if (
+        last["high"] > recent_high
+        and last["close"] < recent_high
+    ):
+        score_down += 1
+
+    # --------------------------------------
+    # 6. FVG STYLE CHECK
+    # --------------------------------------
+
+    candle_a = df.iloc[-4]
+    candle_c = df.iloc[-2]
+
+    bullish_fvg = (
+        candle_a["high"] <
+        candle_c["low"]
+    )
+
+    bearish_fvg = (
+        candle_a["low"] >
+        candle_c["high"]
+    )
+
+    if bullish_fvg:
+        score_up += 1
+
+    if bearish_fvg:
+        score_down += 1
+
+    # --------------------------------------
+    # 7. DISPLACEMENT
+    # --------------------------------------
+
+    avg_range = (
+        df["high"] -
+        df["low"]
+    ).rolling(20).mean().iloc[-2]
+
+    current_range = (
+        last["high"] -
+        last["low"]
+    )
+
+    if current_range > avg_range * 1.3:
+
+        if last["close"] > last["open"]:
+            score_up += 1
+
+        elif last["close"] < last["open"]:
+            score_down += 1
+
+    # --------------------------------------
+    # 8. ORDER-BLOCK STYLE CANDLE
+    # --------------------------------------
+
+    if (
+        prev["close"] < prev["open"]
+        and last["close"] > last["open"]
+        and last["close"] > prev["high"]
+    ):
+        score_up += 1
+
+    elif (
+        prev["close"] > prev["open"]
+        and last["close"] < last["open"]
+        and last["close"] < prev["low"]
+    ):
+        score_down += 1
+
+    # --------------------------------------
+    # 9. VOLATILITY FILTER
+    # --------------------------------------
+
+    atr = last["ATR"]
+
+    if pd.notna(atr) and atr > 0:
+
+        candle_range = (
+            last["high"] -
+            last["low"]
+        )
+
+        # Extremely large candle:
+        # avoid chasing
+        if candle_range > atr * 2.5:
+
+            score_up = min(score_up, 5)
+            score_down = min(score_down, 5)
+
+    # --------------------------------------
+    # FINAL DECISION
+    # --------------------------------------
+
+    if (
+        score_up >= 6
+        and score_up > score_down
+    ):
+
         bias = "UP"
-
-        score = bullish
+        score = score_up
 
     elif (
-        bearish >= 5
-        and bearish > bullish
+        score_down >= 6
+        and score_down > score_up
     ):
-        bias = "DOWN"
 
-        score = bearish
+        bias = "DOWN"
+        score = score_down
 
     else:
-        bias = "NO SIGNAL"
 
+        bias = "NO SIGNAL"
         score = max(
-            bullish,
-            bearish
+            score_up,
+            score_down
         )
 
     return {
         "bias": bias,
         "score": score,
+        "up": score_up,
+        "down": score_down,
         "price": float(last["close"]),
         "rsi": float(last["RSI"]),
         "ema20": float(last["EMA20"]),
         "ema50": float(last["EMA50"]),
         "ema200": float(last["EMA200"]),
         "macd": float(last["MACD"]),
-        "macd_signal": float(
-            last["MACD_SIGNAL"]
-        )
+        "macd_signal": float(last["MACD_SIGNAL"])
     }
 
 
 # ==========================================
-# SCAN REAL PAIRS
+# SCAN
 # ==========================================
 
 results = []
 
-print("========================================")
-print("     REAL MARKET BEST SINGLE SCANNER")
-print("========================================")
+print("==========================================")
+print("      SMC + ICT BEST SINGLE SCANNER")
+print("==========================================")
 print()
 
 for pair, symbol in REAL_PAIRS.items():
 
     try:
 
-        df = get_market_data(symbol)
+        df = get_data(symbol)
 
-        analysis = analyze(df)
-
-        if analysis["bias"] == "NO SIGNAL":
-
-            print(
-                f"{pair}: NO SIGNAL"
-            )
-
-            continue
-
-        results.append({
-            "pair": pair,
-            "symbol": symbol,
-            **analysis
-        })
+        result = smc_ict_score(df)
 
         print(
             f"{pair}: "
-            f"{analysis['bias']} "
+            f"{result['bias']} "
             f"| Score "
-            f"{analysis['score']}/6"
+            f"{result['score']}/8"
         )
+
+        if result["bias"] != "NO SIGNAL":
+
+            results.append({
+                "pair": pair,
+                **result
+            })
 
     except Exception as e:
 
@@ -294,17 +372,14 @@ for pair, symbol in REAL_PAIRS.items():
         )
 
 
-# ==========================================
-# BEST SINGLE
-# ==========================================
-
 print()
-print("----------------------------------------")
+print("------------------------------------------")
+
 
 if not results:
 
     print("BEST SINGLE: NO SIGNAL")
-    print("No strong setup found.")
+    print("No strong SMC + ICT setup found.")
 
 else:
 
@@ -316,7 +391,7 @@ else:
     best = results[0]
 
     print("BEST SINGLE")
-    print("----------------------------------------")
+    print("------------------------------------------")
 
     print(
         "PAIR:",
@@ -334,7 +409,7 @@ else:
 
     print(
         "SCORE:",
-        f"{best['score']}/6"
+        f"{best['score']}/8"
     )
 
     print(
@@ -372,7 +447,7 @@ else:
         round(best["macd_signal"], 6)
     )
 
-print("----------------------------------------")
+print("------------------------------------------")
 
 print(
     "Updated:",
@@ -383,7 +458,7 @@ print(
     )
 )
 
-print("----------------------------------------")
-print("REAL MARKET DATA / PAPER ANALYSIS")
+print("------------------------------------------")
+print("REAL MARKET / PAPER ANALYSIS")
 print("No broker order is sent.")
-print("========================================")
+print("==========================================")
