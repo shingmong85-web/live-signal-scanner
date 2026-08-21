@@ -64,6 +64,19 @@ body {
   margin-bottom: 8px;
 }
 
+select {
+  width: 100%;
+  padding: 14px;
+  border-radius: 13px;
+  border: 1px solid #314362;
+  background: #0b1323;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  outline: none;
+  margin-bottom: 10px;
+}
+
 .pair {
   font-size: 31px;
   font-weight: 800;
@@ -130,7 +143,7 @@ body {
 button {
   width: 100%;
   padding: 14px;
-  margin-top: 16px;
+  margin-top: 10px;
   border: 0;
   border-radius: 13px;
   background: #285bd7;
@@ -160,6 +173,32 @@ button {
   <div class="header">
     <div class="title">SMC + ICT Single</div>
     <div class="badge">PAPER</div>
+  </div>
+
+  <div class="card">
+
+    <div class="single-title">
+      SELECT PAIR
+    </div>
+
+    <select id="pairSelect">
+      <option value="EUR/USD">EUR/USD</option>
+      <option value="GBP/USD">GBP/USD</option>
+      <option value="USD/JPY">USD/JPY</option>
+      <option value="AUD/USD">AUD/USD</option>
+      <option value="USD/CAD">USD/CAD</option>
+      <option value="USD/CHF">USD/CHF</option>
+      <option value="EUR/GBP">EUR/GBP</option>
+      <option value="EUR/JPY">EUR/JPY</option>
+      <option value="GBP/JPY">GBP/JPY</option>
+      <option value="BTC/USD">BTC/USD</option>
+      <option value="ETH/USD">ETH/USD</option>
+    </select>
+
+    <button onclick="refreshSignal()">
+      🔍 GET SINGLE
+    </button>
+
   </div>
 
   <div class="card">
@@ -204,10 +243,6 @@ button {
 
     </div>
 
-    <button onclick="refreshSignal()">
-      🔄 Refresh Single
-    </button>
-
   </div>
 
   <div class="card">
@@ -232,6 +267,9 @@ button {
 
 async function refreshSignal() {
 
+  const selectedPair =
+    document.getElementById("pairSelect").value;
+
   try {
 
     const response = await fetch(
@@ -249,8 +287,46 @@ async function refreshSignal() {
 
     const data = await response.json();
 
+    /*
+      Current scanner saves only the BEST SINGLE.
+      Therefore we only display it when the selected
+      pair matches the saved signal.
+    */
+
+    if (data.pair !== selectedPair) {
+
+      document.getElementById("pair").textContent =
+        selectedPair;
+
+      document.getElementById("signal").textContent =
+        "NO SIGNAL";
+
+      document.getElementById("signal").className =
+        "signal none";
+
+      document.getElementById("score").textContent =
+        "No confirmed setup";
+
+      document.getElementById("tf5").textContent =
+        "NO SIGNAL";
+
+      document.getElementById("tf1").textContent =
+        "NO SIGNAL";
+
+      document.getElementById("price").textContent =
+        "--";
+
+      document.getElementById("rsi").textContent =
+        "--";
+
+      document.getElementById("updated").textContent =
+        "Selected pair is not the current Best Single";
+
+      return;
+    }
+
     document.getElementById("pair").textContent =
-      data.pair || "NO SIGNAL";
+      data.pair || selectedPair;
 
     document.getElementById("score").textContent =
       data.score
@@ -279,12 +355,6 @@ async function refreshSignal() {
     const signal =
       document.getElementById("signal");
 
-    const tf5 =
-      document.getElementById("tf5");
-
-    const tf1 =
-      document.getElementById("tf1");
-
     if (data.bias === "UP") {
 
       signal.textContent = "↑ UP";
@@ -302,25 +372,13 @@ async function refreshSignal() {
 
     }
 
-    if (data.tf5 === "UP" || data.tf5 === "DOWN") {
-      tf5.className = "value confirmed";
-    } else {
-      tf5.className = "value waiting";
-    }
-
-    if (data.tf1 === "UP" || data.tf1 === "DOWN") {
-      tf1.className = "value confirmed";
-    } else {
-      tf1.className = "value waiting";
-    }
-
   } catch (error) {
 
     document.getElementById("pair").textContent =
-      "DATA ERROR";
+      selectedPair;
 
     document.getElementById("signal").textContent =
-      "WAITING";
+      "DATA ERROR";
 
     document.getElementById("signal").className =
       "signal none";
@@ -331,13 +389,6 @@ async function refreshSignal() {
     console.log(error);
   }
 }
-
-refreshSignal();
-
-setInterval(
-  refreshSignal,
-  30000
-);
 
 if ("serviceWorker" in navigator) {
 
