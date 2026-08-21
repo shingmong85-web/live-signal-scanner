@@ -1,40 +1,44 @@
 import pandas as pd
 import random
 
-PAIRS = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+REAL_PAIRS = [
+    "EUR/USD", "GBP/USD", "USD/JPY",
+    "AUD/USD", "USD/CAD", "USD/CHF",
+    "EUR/GBP", "EUR/JPY", "GBP/JPY"
+]
 
-# --------------------------------
-# DEMO DATA GENERATOR
-# --------------------------------
+OTC_PAIRS = [
+    "EUR/USD OTC", "GBP/USD OTC", "USD/JPY OTC",
+    "AUD/USD OTC", "USD/CAD OTC", "USD/CHF OTC",
+    "EUR/GBP OTC", "EUR/JPY OTC", "GBP/JPY OTC"
+]
 
-def generate_data():
+ALL_PAIRS = REAL_PAIRS + OTC_PAIRS
+
+
+def make_demo_data():
     price = 100.0
     rows = []
 
     for _ in range(600):
         change = random.uniform(-0.30, 0.30)
 
-        open_price = price
-        close_price = price + change
-
-        high_price = max(open_price, close_price) + random.uniform(0, 0.10)
-        low_price = min(open_price, close_price) - random.uniform(0, 0.10)
+        o = price
+        c = price + change
+        h = max(o, c) + random.uniform(0, 0.10)
+        l = min(o, c) - random.uniform(0, 0.10)
 
         rows.append({
-            "open": open_price,
-            "high": high_price,
-            "low": low_price,
-            "close": close_price
+            "open": o,
+            "high": h,
+            "low": l,
+            "close": c
         })
 
-        price = close_price
+        price = c
 
     return pd.DataFrame(rows)
 
-
-# --------------------------------
-# ANALYZER
-# --------------------------------
 
 def analyze(df):
 
@@ -56,7 +60,6 @@ def analyze(df):
     loss = (-delta.clip(upper=0)).rolling(14).mean()
 
     rs = gain / loss.replace(0, 1e-10)
-
     df["RSI"] = 100 - (100 / (1 + rs))
 
     ema12 = df["close"].ewm(
@@ -99,94 +102,62 @@ def analyze(df):
         bearish += 1
 
     if bullish >= 3 and bullish > bearish:
-        signal = "UP BIAS"
+        bias = "UP"
+        score = bullish
     elif bearish >= 3 and bearish > bullish:
-        signal = "DOWN BIAS"
+        bias = "DOWN"
+        score = bearish
     else:
-        signal = "NO SIGNAL"
+        bias = "NO SIGNAL"
+        score = max(bullish, bearish)
 
-    return signal
-
-
-# --------------------------------
-# HISTORY TEST
-# --------------------------------
-
-history = []
-
-for pair in PAIRS:
-
-    df = generate_data()
-
-    for i in range(200, len(df) - 1, 5):
-
-        window = df.iloc[:i].copy()
-
-        signal = analyze(window)
-
-        current_price = df.iloc[i]["close"]
-        next_price = df.iloc[i + 1]["close"]
-
-        if signal == "UP BIAS":
-            outcome = "CORRECT" if next_price > current_price else "WRONG"
-
-        elif signal == "DOWN BIAS":
-            outcome = "CORRECT" if next_price < current_price else "WRONG"
-
-        else:
-            outcome = "SKIPPED"
-
-        history.append({
-            "pair": pair,
-            "signal": signal,
-            "current_price": round(current_price, 5),
-            "next_price": round(next_price, 5),
-            "outcome": outcome
-        })
+    return bias, score
 
 
-# --------------------------------
-# RESULTS
-# --------------------------------
+results = []
 
-history_df = pd.DataFrame(history)
+for pair in ALL_PAIRS:
 
-signals = history_df[
-    history_df["outcome"] != "SKIPPED"
-]
+    df = make_demo_data()
 
-correct = len(
-    signals[signals["outcome"] == "CORRECT"]
+    bias, score = analyze(df)
+
+    results.append({
+        "pair": pair,
+        "bias": bias,
+        "score": score
+    })
+
+
+results.sort(
+    key=lambda x: x["score"],
+    reverse=True
 )
 
-total = len(signals)
+best = results[0]
 
-if total > 0:
-    accuracy = (correct / total) * 100
-else:
-    accuracy = 0
+print("========================================")
+print("       BEST SINGLE DEMO ANALYZER")
+print("========================================")
 
+print("Pair:", best["pair"])
+print("Timeframe: 5M")
+print("Bias:", best["bias"])
+print("Score:", str(best["score"]) + "/4")
 
-print("================================")
-print("DEMO SIGNAL HISTORY")
-print("================================")
+print("----------------------------------------")
+print("All pair results:")
 
-print("Pairs tested:", ", ".join(PAIRS))
+for item in results:
+    print(
+        item["pair"],
+        "->",
+        item["bias"],
+        "| Score:",
+        str(item["score"]) + "/4"
+    )
 
-print("Total signals:", total)
-print("Correct:", correct)
-
-print(
-    "Accuracy:",
-    round(accuracy, 2),
-    "%"
-)
-
-print("--------------------------------")
-print("Recent results:")
-print(history_df.tail(10).to_string(index=False))
-
-print("--------------------------------")
-print("Paper/demo analysis only.")
+print("----------------------------------------")
+print("PAPER/DEMO ANALYSIS ONLY")
 print("No broker order is sent.")
-print("================================")
+print("========================================")
