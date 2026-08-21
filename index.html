@@ -1,3 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SMC ICT Single Scanner</title>
+
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#0b1020">
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #080d18;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  max-width: 520px;
+  margin: auto;
+  padding: 18px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.title {
+  font-size: 23px;
+  font-weight: bold;
+}
+
+.badge {
+  background: #17233d;
+  color: #9db6ff;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+}
+
+.card {
+  background: #121a2d;
+  border: 1px solid #273653;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.label {
+  color: #aebbd2;
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+
+.pair {
+  font-size: 29px;
+  font-weight: bold;
+}
+
+.timeframe {
+  color: #9eacc4;
+  margin-top: 5px;
+}
+
+.signal {
+  font-size: 34px;
+  font-weight: bold;
+  margin: 15px 0;
+}
+
+.up {
+  color: #45d483;
+}
+
+.down {
+  color: #ff6878;
+}
+
+.none {
+  color: #ffd166;
+}
+
+.score {
+  font-size: 18px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.box {
+  background: #0d1526;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.value {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 12px;
+  background: #285bd7;
+  color: white;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.updated {
+  color: #aebbd2;
+  font-size: 13px;
+}
+
+.footer {
+  text-align: center;
+  color: #71809a;
+  font-size: 11px;
+  margin-top: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="title">SMC + ICT Single</div>
+    <div class="badge">PAPER</div>
+  </div>
+
+  <div class="card">
+
+    <div class="label">BEST SINGLE</div>
+
+    <div id="pair" class="pair">
+      DATA WAITING
+    </div>
+
+    <div id="signal" class="signal none">
+      WAITING
+    </div>
+
+    <div id="score" class="score">
+      Score: --
+    </div>
+
+    <div class="grid">
+
+      <div class="box">
+        <div class="label">5M</div>
+        <div id="tf5" class="value">
+          --
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="label">1M</div>
+        <div id="tf1" class="value">
+          --
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="label">PRICE</div>
+        <div id="price" class="value">
+          --
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="label">RSI</div>
+        <div id="rsi" class="value">
+          --
+        </div>
+      </div>
+
+    </div>
+
+    <button onclick="refreshSignal()">
+      🔄 Refresh Signal
+    </button>
+
+  </div>
+
+  <div class="card">
+
+    <div class="label">
+      LAST UPDATE
+    </div>
+
+    <div id="updated" class="updated">
+      Waiting...
+    </div>
+
+  </div>
+
+  <div class="footer">
+    SMC + ICT • 1M / 5M • Paper Analysis Only
+  </div>
+
+</div>
+
 <script>
 
 async function refreshSignal() {
@@ -5,8 +226,17 @@ async function refreshSignal() {
   try {
 
     const response = await fetch(
-      "signal.json?time=" + Date.now()
+      "signal.json?time=" + Date.now(),
+      {
+        cache: "no-store"
+      }
     );
+
+    if (!response.ok) {
+      throw new Error(
+        "signal.json HTTP " + response.status
+      );
+    }
 
     const data = await response.json();
 
@@ -15,7 +245,9 @@ async function refreshSignal() {
 
     document.getElementById("score").textContent =
       "Score: " +
-      (data.score ? data.score + "/8" : "--");
+      (data.score
+        ? data.score + "/8"
+        : "--");
 
     document.getElementById("tf5").textContent =
       data.tf5 || "NO SIGNAL";
@@ -24,10 +256,14 @@ async function refreshSignal() {
       data.tf1 || "NO SIGNAL";
 
     document.getElementById("price").textContent =
-      data.price || "--";
+      data.price != null
+        ? data.price
+        : "--";
 
     document.getElementById("rsi").textContent =
-      data.rsi ? Number(data.rsi).toFixed(2) : "--";
+      data.rsi != null
+        ? Number(data.rsi).toFixed(2)
+        : "--";
 
     document.getElementById("updated").textContent =
       data.updated || "Waiting...";
@@ -55,10 +291,13 @@ async function refreshSignal() {
   } catch (error) {
 
     document.getElementById("pair").textContent =
-      "DATA WAITING";
+      "DATA ERROR";
 
     document.getElementById("signal").textContent =
       "WAITING";
+
+    document.getElementById("updated").textContent =
+      "Cannot load signal.json";
 
     console.log(error);
   }
@@ -71,4 +310,29 @@ setInterval(
   30000
 );
 
+if ("serviceWorker" in navigator) {
+
+  window.addEventListener(
+    "load",
+    function () {
+
+      navigator.serviceWorker
+        .register("sw.js")
+        .catch(function(error) {
+
+          console.log(
+            "Service Worker Error:",
+            error
+          );
+
+        });
+
+    }
+  );
+
+}
+
 </script>
+
+</body>
+</html>
