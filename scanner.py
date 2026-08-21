@@ -1,6 +1,12 @@
 import pandas as pd
 import requests
+import csv
+import os
 from datetime import datetime, timezone
+
+# ==========================================
+# REAL MARKET PAIRS
+# ==========================================
 
 REAL_PAIRS = {
     "EUR/USD": "EURUSD=X",
@@ -16,6 +22,10 @@ REAL_PAIRS = {
     "ETH/USD": "ETH-USD"
 }
 
+
+# ==========================================
+# MARKET DATA
+# ==========================================
 
 def get_data(symbol, interval, range_="5d"):
 
@@ -60,6 +70,10 @@ def get_data(symbol, interval, range_="5d"):
 
     return df.dropna().reset_index(drop=True)
 
+
+# ==========================================
+# INDICATORS
+# ==========================================
 
 def add_indicators(df):
 
@@ -128,6 +142,10 @@ def add_indicators(df):
     return df
 
 
+# ==========================================
+# 1M CONFIRMATION
+# ==========================================
+
 def timeframe_bias(df):
 
     if len(df) < 220:
@@ -140,7 +158,6 @@ def timeframe_bias(df):
     bullish = 0
     bearish = 0
 
-    # EMA trend
     if (
         last["EMA20"] >
         last["EMA50"] >
@@ -155,14 +172,12 @@ def timeframe_bias(df):
     ):
         bearish += 1
 
-    # RSI
     if last["RSI"] > 50:
         bullish += 1
 
     elif last["RSI"] < 50:
         bearish += 1
 
-    # MACD
     if last["MACD"] > last["MACD_SIGNAL"]:
         bullish += 1
 
@@ -178,12 +193,17 @@ def timeframe_bias(df):
     return "NO SIGNAL"
 
 
+# ==========================================
+# SMC + ICT 5M ANALYSIS
+# ==========================================
+
 def smc_ict_score(df):
 
     if len(df) < 220:
         return {
             "bias": "NO SIGNAL",
-            "score": 0
+            "score": 0,
+            "reason": "Not enough data"
         }
 
     df = add_indicators(df)
@@ -194,9 +214,9 @@ def smc_ict_score(df):
     up = 0
     down = 0
 
-    # =====================================
-    # 1 EMA TREND
-    # =====================================
+    # --------------------------------------
+    # 1. EMA TREND
+    # --------------------------------------
 
     if (
         last["EMA20"] >
@@ -212,9 +232,9 @@ def smc_ict_score(df):
     ):
         down += 1
 
-    # =====================================
-    # 2 RSI
-    # =====================================
+    # --------------------------------------
+    # 2. RSI
+    # --------------------------------------
 
     if last["RSI"] > 50:
         up += 1
@@ -222,9 +242,9 @@ def smc_ict_score(df):
     elif last["RSI"] < 50:
         down += 1
 
-    # =====================================
-    # 3 MACD
-    # =====================================
+    # --------------------------------------
+    # 3. MACD
+    # --------------------------------------
 
     if last["MACD"] > last["MACD_SIGNAL"]:
         up += 1
@@ -232,9 +252,9 @@ def smc_ict_score(df):
     elif last["MACD"] < last["MACD_SIGNAL"]:
         down += 1
 
-    # =====================================
-    # 4 MARKET STRUCTURE
-    # =====================================
+    # --------------------------------------
+    # 4. MARKET STRUCTURE / BOS STYLE
+    # --------------------------------------
 
     if (
         last["high"] > prev["high"]
@@ -248,9 +268,9 @@ def smc_ict_score(df):
     ):
         down += 1
 
-    # =====================================
-    # 5 LIQUIDITY SWEEP
-    # =====================================
+    # --------------------------------------
+    # 5. LIQUIDITY SWEEP STYLE
+    # --------------------------------------
 
     recent_high = df["high"].iloc[-7:-2].max()
     recent_low = df["low"].iloc[-7:-2].min()
@@ -267,9 +287,9 @@ def smc_ict_score(df):
     ):
         down += 1
 
-    # =====================================
-    # 6 FVG STYLE CHECK
-    # =====================================
+    # --------------------------------------
+    # 6. FVG STYLE
+    # --------------------------------------
 
     candle_a = df.iloc[-4]
     candle_c = df.iloc[-2]
@@ -290,9 +310,9 @@ def smc_ict_score(df):
     if bearish_fvg:
         down += 1
 
-    # =====================================
-    # 7 DISPLACEMENT
-    # =====================================
+    # --------------------------------------
+    # 7. DISPLACEMENT
+    # --------------------------------------
 
     avg_range = (
         df["RANGE"]
@@ -311,9 +331,9 @@ def smc_ict_score(df):
             elif last["close"] < last["open"]:
                 down += 1
 
-    # =====================================
-    # 8 ORDER-BLOCK STYLE
-    # =====================================
+    # --------------------------------------
+    # 8. ORDER-BLOCK STYLE
+    # --------------------------------------
 
     if (
         prev["close"] < prev["open"]
@@ -329,20 +349,32 @@ def smc_ict_score(df):
     ):
         down += 1
 
-    # =====================================
-    # VOLATILITY FILTER
-    # =====================================
+    # --------------------------------------
+    # 9. VOLATILITY FILTER
+    # --------------------------------------
 
     if pd.notna(last["ATR"]):
 
         if last["RANGE"] > last["ATR"] * 2.5:
 
-            up = min(up, 5)
-            down = min(down, 5)
+            return {
+                "bias": "NO SIGNAL",
+                "score": max(up, down),
+                "up": up,
+                "down": down,
+                "reason": "High volatility",
+                "price": float(last["close"]),
+                "rsi": float(last["RSI"]),
+                "ema20": float(last["EMA20"]),
+                "ema50": float(last["EMA50"]),
+                "ema200": float(last["EMA200"]),
+                "macd": float(last["MACD"]),
+                "macd_signal": float(last["MACD_SIGNAL"])
+            }
 
-    # =====================================
-    # FINAL 5M RESULT
-    # =====================================
+    # --------------------------------------
+    # FINAL 5M DECISION
+    # --------------------------------------
 
     if up >= 6 and up > down:
 
@@ -364,6 +396,7 @@ def smc_ict_score(df):
         "score": score,
         "up": up,
         "down": down,
+        "reason": "Normal",
         "price": float(last["close"]),
         "rsi": float(last["RSI"]),
         "ema20": float(last["EMA20"]),
@@ -381,7 +414,7 @@ def smc_ict_score(df):
 results = []
 
 print("==========================================")
-print("     SMC + ICT 1M / 5M BEST SINGLE")
+print("   SMC + ICT 1M / 5M BEST SINGLE")
 print("==========================================")
 print()
 
@@ -389,15 +422,16 @@ for pair, symbol in REAL_PAIRS.items():
 
     try:
 
-        # 5-minute analysis
+        # 5M
         df5 = get_data(
             symbol,
-            "5m"
+            "5m",
+            "5d"
         )
 
         result5 = smc_ict_score(df5)
 
-        # 1-minute confirmation
+        # 1M
         df1 = get_data(
             symbol,
             "1m",
@@ -414,7 +448,7 @@ for pair, symbol in REAL_PAIRS.items():
         )
 
         # ----------------------------------
-        # MTF CONFIRMATION
+        # 1M + 5M CONFIRMATION
         # ----------------------------------
 
         confirmed = False
@@ -449,6 +483,10 @@ for pair, symbol in REAL_PAIRS.items():
 print()
 print("------------------------------------------")
 
+
+# ==========================================
+# BEST SINGLE
+# ==========================================
 
 if not results:
 
@@ -522,6 +560,74 @@ else:
         round(best["macd_signal"], 6)
     )
 
+
+# ==========================================
+# PAPER SIGNAL HISTORY
+# ==========================================
+
+history_file = "signal_history.csv"
+
+if results:
+
+    best = results[0]
+
+    timestamp = datetime.now(
+        timezone.utc
+    ).strftime(
+        "%Y-%m-%d %H:%M:%S UTC"
+    )
+
+    file_exists = os.path.exists(
+        history_file
+    )
+
+    with open(
+        history_file,
+        "a",
+        newline="",
+        encoding="utf-8"
+    ) as f:
+
+        writer = csv.writer(f)
+
+        if not file_exists:
+
+            writer.writerow([
+                "timestamp",
+                "pair",
+                "5m_bias",
+                "1m_bias",
+                "score",
+                "price",
+                "rsi"
+            ])
+
+        writer.writerow([
+            timestamp,
+            best["pair"],
+            best["bias"],
+            best["1m_bias"],
+            best["score"],
+            best["price"],
+            best["rsi"]
+        ])
+
+    print()
+    print("PAPER SIGNAL SAVED")
+    print(
+        "History file:",
+        history_file
+    )
+
+else:
+
+    print()
+    print("NO PAPER SIGNAL SAVED")
+
+
+# ==========================================
+# FINISH
+# ==========================================
 
 print("------------------------------------------")
 
